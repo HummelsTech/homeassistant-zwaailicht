@@ -17,18 +17,9 @@ from homeassistant.helpers.update_coordinator import (
 )
 
 from .const import (
-    CONF_FEED_TYPE,
-    CONF_MAX_DISTANCE_KM,
-    CONF_SCAN_INTERVAL,
-    CONF_STAD,
-    DEFAULT_SCAN_INTERVAL,
     DIENST_EMOJI_MAP,
     DIENST_KEYWORD_MAP,
     DOMAIN,
-    FEED_TYPE_MELDINGEN,
-    FEED_TYPE_PIEKEN,
-    MELDINGEN_URL_TEMPLATE,
-    PIEKEN_URL,
     haversine,
 )
 
@@ -45,29 +36,34 @@ _MELDINGEN_TITLE_RE = re.compile(
 # Example: "Brandweer melding. Prioriteit: Urgent. Eenheid: BAD-01. Type: Brand."
 _SUMMARY_FIELD_RE = re.compile(r"(\w[\w\s]*?):\s*([^.]+)")
 
+FEED_TYPE_MELDINGEN = "meldingen"
+FEED_TYPE_PIEKEN = "pieken"
+
 
 class ZwaailichtCoordinator(DataUpdateCoordinator[list[dict[str, Any]]]):
     """Coordinator that polls a zwaailicht.nu Atom feed."""
 
-    def __init__(self, hass: HomeAssistant, config: dict[str, Any]) -> None:
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        *,
+        feed_url: str,
+        feed_type: str,
+        stad: str,
+        scan_interval: int,
+        max_distance_km: float | None = None,
+    ) -> None:
         """Initialize the coordinator."""
-        self.feed_type: str = config.get(CONF_FEED_TYPE, FEED_TYPE_MELDINGEN)
-        self.stad: str = config.get(CONF_STAD, "")
-        self.max_distance_km: float | None = config.get(CONF_MAX_DISTANCE_KM)
+        self.feed_url = feed_url
+        self.feed_type = feed_type
+        self.stad = stad
+        self.max_distance_km = max_distance_km
 
-        if self.feed_type == FEED_TYPE_PIEKEN:
-            self.feed_url = PIEKEN_URL
-            name = f"{DOMAIN}_pieken"
-        else:
-            self.feed_url = MELDINGEN_URL_TEMPLATE.format(stad=self.stad)
-            name = f"{DOMAIN}_{self.stad}"
-
-        scan_interval = config.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
-
+        suffix = "pieken" if feed_type == FEED_TYPE_PIEKEN else stad
         super().__init__(
             hass,
             _LOGGER,
-            name=name,
+            name=f"{DOMAIN}_{suffix}",
             update_interval=timedelta(seconds=scan_interval),
         )
 
@@ -127,8 +123,7 @@ class ZwaailichtCoordinator(DataUpdateCoordinator[list[dict[str, Any]]]):
             title = getattr(entry, "title", "")
             summary = getattr(entry, "summary", "")
 
-            # Extract dienst from category tags (primary), fall back to
-            # emoji / keyword detection.
+            # Extract dienst and city from category tags.
             dienst = ""
             stad = ""
             tags = getattr(entry, "tags", [])
@@ -139,12 +134,9 @@ class ZwaailichtCoordinator(DataUpdateCoordinator[list[dict[str, Any]]]):
                 ):
                     dienst = term
                 else:
-                    # Second category is typically the city slug.
                     stad = term
             if not dienst:
                 dienst = _detect_dienst(title) or _detect_dienst(summary)
-
-            # Use city from feed categories, fall back to configured stad.
             stad = stad or self.stad
 
             # Build the core alert dict.
