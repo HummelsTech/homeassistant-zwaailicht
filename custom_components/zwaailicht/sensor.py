@@ -84,7 +84,11 @@ class ZwaailichtSensor(
             "link": latest.get("link"),
         }
 
-        for key in ("summary", "capcode", "latitude", "longitude", "distance_km", "piek_url"):
+        # Optional fields parsed from title and summary.
+        for key in (
+            "prioriteit_code", "prioriteit", "locatie",
+            "summary", "eenheid", "type",
+        ):
             if key in latest:
                 attrs[key] = latest[key]
 

@@ -8,7 +8,6 @@ from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import (
-    CONF_MAX_DISTANCE_KM,
     CONF_SCAN_INTERVAL,
     CONF_STAD,
     DEFAULT_SCAN_INTERVAL,
@@ -28,9 +27,6 @@ STEP_OPTIONS_DATA_SCHEMA = vol.Schema(
         vol.Optional(
             CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL
         ): vol.All(int, vol.Range(min=MIN_SCAN_INTERVAL)),
-        vol.Optional(CONF_MAX_DISTANCE_KM): vol.All(
-            vol.Coerce(float), vol.Range(min=0.1)
-        ),
     }
 )
 
@@ -77,15 +73,12 @@ class ZwaailichtConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_options(
         self, user_input: dict[str, any] | None = None
     ) -> ConfigFlowResult:
-        """Handle optional settings (scan interval, distance filter)."""
+        """Handle optional settings (scan interval)."""
         if user_input is not None:
             data: dict[str, any] = {CONF_STAD: self._stad}
             data[CONF_SCAN_INTERVAL] = user_input.get(
                 CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL
             )
-            max_dist = user_input.get(CONF_MAX_DISTANCE_KM)
-            if max_dist is not None:
-                data[CONF_MAX_DISTANCE_KM] = max_dist
             return self.async_create_entry(
                 title=f"Zwaailicht {self._stad.title()}", data=data
             )

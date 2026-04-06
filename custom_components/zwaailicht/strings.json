@@ -10,10 +10,9 @@
       },
       "options": {
         "title": "Options",
-        "description": "Optionally adjust the polling interval and distance filter. Distance filtering uses your Home Assistant home location.",
+        "description": "Optionally adjust the polling interval.",
         "data": {
-          "scan_interval": "Update interval (seconds)",
-          "max_distance_km": "Maximum distance (km)"
+          "scan_interval": "Update interval (seconds)"
         }
       }
     },

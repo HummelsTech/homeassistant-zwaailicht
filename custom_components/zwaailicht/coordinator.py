@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import timedelta
 import logging
+import re
 from typing import Any
 
 import feedparser
@@ -16,19 +17,27 @@ from homeassistant.helpers.update_coordinator import (
 )
 
 from .const import (
-    CONF_MAX_DISTANCE_KM,
     CONF_SCAN_INTERVAL,
     CONF_STAD,
-    DEFAULT_MAX_DISTANCE_KM,
     DEFAULT_SCAN_INTERVAL,
     DIENST_EMOJI_MAP,
     DIENST_KEYWORD_MAP,
     DOMAIN,
     FEED_URL_TEMPLATE,
-    haversine,
 )
 
 _LOGGER = logging.getLogger(__name__)
+
+# Pattern to extract priority code and label from title.
+# Examples: "🚑 A1 Spoed — Brouwersgracht, Amsterdam"
+#           "🔥 P2 Urgent — Saaftingestraat, Amsterdam"
+_TITLE_RE = re.compile(
+    r"^.+?\s+([A-Z]\d)\s+(.+?)\s+[—\-]\s+(.+),\s*(.+)$"
+)
+
+# Pattern to extract structured fields from summary.
+# Example: "Brandweer melding. Prioriteit: Urgent. Eenheid: BAD-01. Type: Brand."
+_SUMMARY_FIELD_RE = re.compile(r"(\w[\w\s]*?):\s*([^.]+)")
 
 
 class ZwaailichtCoordinator(DataUpdateCoordinator[list[dict[str, Any]]]):
@@ -38,9 +47,6 @@ class ZwaailichtCoordinator(DataUpdateCoordinator[list[dict[str, Any]]]):
         """Initialize the coordinator."""
         self.stad: str = config[CONF_STAD]
         self.feed_url: str = FEED_URL_TEMPLATE.format(stad=self.stad)
-        self.max_distance_km: float | None = config.get(
-            CONF_MAX_DISTANCE_KM, DEFAULT_MAX_DISTANCE_KM
-        )
 
         scan_interval = config.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
 
@@ -96,7 +102,7 @@ class ZwaailichtCoordinator(DataUpdateCoordinator[list[dict[str, Any]]]):
     def _process_entries(
         self, raw_entries: list
     ) -> list[dict[str, Any]]:
-        """Convert feed entries to normalized dicts and apply filters."""
+        """Convert feed entries to normalized dicts."""
         results: list[dict[str, Any]] = []
 
         for entry in raw_entries:
@@ -107,16 +113,16 @@ class ZwaailichtCoordinator(DataUpdateCoordinator[list[dict[str, Any]]]):
             title = getattr(entry, "title", "")
             summary = getattr(entry, "summary", "")
 
-            # Extract dienst: try category tags first, then emoji, then keywords.
+            # Extract dienst from category tags (primary), fall back to
+            # emoji / keyword detection.
             dienst = ""
             tags = getattr(entry, "tags", [])
             if tags:
                 dienst = tags[0].get("term", "").lower()
-
             if not dienst:
                 dienst = _detect_dienst(title) or _detect_dienst(summary)
 
-            # Build the alert dict.
+            # Build the core alert dict.
             alert: dict[str, Any] = {
                 "id": entry_id,
                 "title": title,
@@ -127,65 +133,25 @@ class ZwaailichtCoordinator(DataUpdateCoordinator[list[dict[str, Any]]]):
                 "stad": self.stad,
             }
 
-            # Summary text — expose as attribute when present.
+            # Parse structured fields from title.
+            # "🚑 A1 Spoed — Brouwersgracht, Amsterdam"
+            m = _TITLE_RE.match(title)
+            if m:
+                alert["prioriteit_code"] = m.group(1)   # e.g. "A1"
+                alert["prioriteit"] = m.group(2)         # e.g. "Spoed"
+                alert["locatie"] = m.group(3).strip()    # e.g. "Brouwersgracht"
+
+            # Parse structured fields from summary.
+            # "Brandweer melding. Prioriteit: Urgent. Eenheid: BAD-01. Type: Brand."
             if summary:
                 alert["summary"] = summary
-
-            content_list = getattr(entry, "content", [])
-            content_text = (
-                content_list[0].get("value", "") if content_list else ""
-            )
-
-            # Geo fields — check georss or geo namespace.
-            lat = _get_float(entry, "geo_lat") or _get_float(
-                entry, "georss_point_lat"
-            )
-            lon = _get_float(entry, "geo_long") or _get_float(
-                entry, "georss_point_lon"
-            )
-
-            # Also handle georss:point "lat lon" format.
-            if lat is None and hasattr(entry, "georss_point"):
-                parts = entry.georss_point.split()
-                if len(parts) == 2:
-                    try:
-                        lat, lon = float(parts[0]), float(parts[1])
-                    except ValueError:
-                        pass
-
-            if lat is not None and lon is not None:
-                alert["latitude"] = lat
-                alert["longitude"] = lon
-                # Always compute distance if home location is set.
-                if (
-                    self.hass.config.latitude is not None
-                    and self.hass.config.longitude is not None
-                ):
-                    dist = haversine(
-                        self.hass.config.latitude,
-                        self.hass.config.longitude,
-                        lat,
-                        lon,
-                    )
-                    alert["distance_km"] = round(dist, 1)
-
-            # Extract capcode if present as a custom field.
-            capcode = getattr(entry, "capcode", None)
-            if capcode:
-                alert["capcode"] = capcode
-
-            # Piek URL — look for an alternate link or custom field.
-            for link_entry in getattr(entry, "links", []):
-                if link_entry.get("rel") == "related":
-                    alert["piek_url"] = link_entry["href"]
-                    break
-
-            # Proximity filtering.
-            if self.max_distance_km is not None:
-                dist = alert.get("distance_km")
-                if dist is not None and dist > self.max_distance_km:
-                    continue
-                # Entries without lat/lon are always included.
+                for field_match in _SUMMARY_FIELD_RE.finditer(summary):
+                    key = field_match.group(1).strip().lower()
+                    value = field_match.group(2).strip()
+                    if key == "eenheid":
+                        alert["eenheid"] = value
+                    elif key == "type":
+                        alert["type"] = value
 
             results.append(alert)
 
@@ -205,7 +171,6 @@ class ZwaailichtCoordinator(DataUpdateCoordinator[list[dict[str, Any]]]):
 
         # Trim seen_ids to prevent unbounded growth — keep last 500.
         if len(self._seen_ids) > 500:
-            # Keep only IDs from current entries.
             current_ids = {e["id"] for e in entries}
             self._seen_ids = current_ids
 
@@ -220,14 +185,3 @@ def _detect_dienst(text: str) -> str:
         if keyword in text_lower:
             return dienst
     return ""
-
-
-def _get_float(entry: Any, attr: str) -> float | None:
-    """Safely extract a float attribute from a feed entry."""
-    val = getattr(entry, attr, None)
-    if val is None:
-        return None
-    try:
-        return float(val)
-    except (ValueError, TypeError):
-        return None

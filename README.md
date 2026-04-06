@@ -23,7 +23,7 @@ Copy the `custom_components/zwaailicht` folder into your Home Assistant `config/
 1. Go to **Settings → Devices & Services → Add Integration**
 2. Search for "Zwaailicht P2000"
 3. Enter the city slug as used on zwaailicht.nu (e.g. `amsterdam`, `utrecht`, `rotterdam`)
-4. Optionally adjust the update interval (default: 60s) and maximum distance filter
+4. Optionally adjust the update interval (default: 60s, minimum: 30s)
 
 You can add multiple cities — each becomes a separate sensor entity.
 
@@ -31,8 +31,18 @@ You can add multiple cities — each becomes a separate sensor entity.
 
 Each configured city creates a sensor `sensor.zwaailicht_{stad}` with:
 
-- **State**: title of the most recent alert
-- **Attributes**: `dienst`, `timestamp`, `link`, `capcode`, `latitude`, `longitude`, `distance_km`, `piek_url`, `recent_alerts` (last 10)
+- **State**: title of the most recent alert (e.g. "🚑 A1 Spoed — Brouwersgracht, Amsterdam")
+- **Attributes**:
+  - `dienst` — ambulance, brandweer, politie, knrm
+  - `timestamp` — alert timestamp (ISO 8601)
+  - `link` — URL to the alert on zwaailicht.nu
+  - `prioriteit_code` — priority code (A1, A2, B1, B2, P1, P2, etc.)
+  - `prioriteit` — priority label (Spoed, Urgent, Gepland vervoer, etc.)
+  - `locatie` — street/location name
+  - `summary` — full summary text
+  - `eenheid` — responding unit (when available, e.g. BAD-01)
+  - `type` — incident type (Medisch, Brand, etc.)
+  - `recent_alerts` — list of the last 10 alerts
 - **Icon**: dynamic based on dienst (fire truck, ambulance, police badge, lifebuoy)
 
 ## Events
@@ -41,7 +51,7 @@ A `zwaailicht_new_alert` event fires for each new alert (not on every poll). Use
 
 ```yaml
 automation:
-  - alias: "P2000 Alert on NSPanel"
+  - alias: "P2000 Brandweer Alert on NSPanel"
     trigger:
       - platform: event
         event_type: zwaailicht_new_alert
@@ -51,17 +61,17 @@ automation:
     action:
       - service: notify.nspanel
         data:
-          message: "🚒 {{ trigger.event.data.title }} ({{ trigger.event.data.distance_km }}km)"
+          message: "🔥 {{ trigger.event.data.title }}"
 ```
 
-### Filter by distance in automations
+### Filter by priority
 
-If you don't set `max_distance_km` in the config, you can still filter per automation:
+Only trigger on the most urgent alerts:
 
 ```yaml
     condition:
       - condition: template
-        value_template: "{{ trigger.event.data.distance_km | float < 5 }}"
+        value_template: "{{ trigger.event.data.prioriteit_code in ['A1', 'P1'] }}"
 ```
 
 ## Links

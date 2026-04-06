@@ -10,10 +10,9 @@
       },
       "options": {
         "title": "Opties",
-        "description": "Pas optioneel het update-interval en afstandsfilter aan. Het afstandsfilter gebruikt de thuislocatie van Home Assistant.",
+        "description": "Pas optioneel het update-interval aan.",
         "data": {
-          "scan_interval": "Update-interval (seconden)",
-          "max_distance_km": "Maximale afstand (km)"
+          "scan_interval": "Update-interval (seconden)"
         }
       }
     },
