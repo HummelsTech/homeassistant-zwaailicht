@@ -1,0 +1,28 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Stad toevoegen",
+        "description": "Voer de stadsnaam in zoals gebruikt op zwaailicht.nu (bijv. amsterdam, utrecht).",
+        "data": {
+          "stad": "Stad"
+        }
+      },
+      "options": {
+        "title": "Opties",
+        "description": "Pas optioneel het update-interval en afstandsfilter aan. Het afstandsfilter gebruikt de thuislocatie van Home Assistant.",
+        "data": {
+          "scan_interval": "Update-interval (seconden)",
+          "max_distance_km": "Maximale afstand (km)"
+        }
+      }
+    },
+    "error": {
+      "stad_not_found": "Stad niet gevonden op zwaailicht.nu",
+      "cannot_connect": "Kan geen verbinding maken met zwaailicht.nu"
+    },
+    "abort": {
+      "already_configured": "Deze stad is al geconfigureerd"
+    }
+  }
+}

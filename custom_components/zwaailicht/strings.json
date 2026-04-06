@@ -1,0 +1,28 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Add a city",
+        "description": "Enter the city slug as used on zwaailicht.nu (e.g. amsterdam, utrecht).",
+        "data": {
+          "stad": "City"
+        }
+      },
+      "options": {
+        "title": "Options",
+        "description": "Optionally adjust the polling interval and distance filter. Distance filtering uses your Home Assistant home location.",
+        "data": {
+          "scan_interval": "Update interval (seconds)",
+          "max_distance_km": "Maximum distance (km)"
+        }
+      }
+    },
+    "error": {
+      "stad_not_found": "City not found on zwaailicht.nu",
+      "cannot_connect": "Unable to connect to zwaailicht.nu"
+    },
+    "abort": {
+      "already_configured": "This city is already configured"
+    }
+  }
+}
