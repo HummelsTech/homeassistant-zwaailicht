@@ -1,7 +1,7 @@
 {
   "domain": "zwaailicht",
   "name": "Zwaailicht P2000",
-  "version": "1.0.0",
+  "version": "0.6.1",
   "codeowners": ["@graus"],
   "config_flow": true,
   "documentation": "https://github.com/graus/homeassistant-zwaailicht",
