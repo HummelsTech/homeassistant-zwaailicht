@@ -5,34 +5,26 @@ from __future__ import annotations
 import voluptuous as vol
 
 from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import (
-    CONF_MAX_DISTANCE_KM,
     CONF_PIEKEN,
+    CONF_RADIUS_KM,
     CONF_SCAN_INTERVAL,
-    CONF_STAD,
+    DEFAULT_RADIUS_KM,
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
-    MELDINGEN_URL_TEMPLATE,
     MIN_SCAN_INTERVAL,
 )
 
 STEP_USER_SCHEMA = vol.Schema(
     {
-        vol.Required(CONF_STAD): str,
-    }
-)
-
-STEP_OPTIONS_SCHEMA = vol.Schema(
-    {
+        vol.Required(CONF_RADIUS_KM, default=DEFAULT_RADIUS_KM): vol.All(
+            vol.Coerce(float), vol.Range(min=0.1)
+        ),
+        vol.Optional(CONF_PIEKEN, default=True): bool,
         vol.Optional(
             CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL
         ): vol.All(int, vol.Range(min=MIN_SCAN_INTERVAL)),
-        vol.Optional(CONF_MAX_DISTANCE_KM): vol.All(
-            vol.Coerce(float), vol.Range(min=0.1)
-        ),
-        vol.Optional(CONF_PIEKEN, default=False): bool,
     }
 )
 
@@ -42,60 +34,21 @@ class ZwaailichtConfigFlow(ConfigFlow, domain=DOMAIN):
 
     VERSION = 1
 
-    def __init__(self) -> None:
-        """Initialize."""
-        self._stad: str = ""
-
     async def async_step_user(
-        self, user_input: dict[str, str] | None = None
+        self, user_input: dict[str, any] | None = None
     ) -> ConfigFlowResult:
-        """Handle the initial step — city input."""
-        errors: dict[str, str] = {}
+        """Single step: radius, pieken toggle, scan interval."""
+        # Only one instance allowed.
+        await self.async_set_unique_id(DOMAIN)
+        self._abort_if_unique_id_configured()
 
         if user_input is not None:
-            stad = user_input[CONF_STAD].strip().lower()
-
-            await self.async_set_unique_id(stad)
-            self._abort_if_unique_id_configured()
-
-            url = MELDINGEN_URL_TEMPLATE.format(stad=stad)
-            session = async_get_clientsession(self.hass)
-            try:
-                resp = await session.get(url, timeout=10)
-                if resp.status == 200:
-                    self._stad = stad
-                    return await self.async_step_options()
-                errors["base"] = "stad_not_found"
-            except Exception:  # noqa: BLE001
-                errors["base"] = "cannot_connect"
+            return self.async_create_entry(
+                title="Zwaailicht P2000",
+                data=user_input,
+            )
 
         return self.async_show_form(
             step_id="user",
             data_schema=STEP_USER_SCHEMA,
-            errors=errors,
-        )
-
-    async def async_step_options(
-        self, user_input: dict[str, any] | None = None
-    ) -> ConfigFlowResult:
-        """Handle optional settings."""
-        if user_input is not None:
-            data: dict[str, any] = {
-                CONF_STAD: self._stad,
-                CONF_SCAN_INTERVAL: user_input.get(
-                    CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL
-                ),
-                CONF_PIEKEN: user_input.get(CONF_PIEKEN, False),
-            }
-            max_dist = user_input.get(CONF_MAX_DISTANCE_KM)
-            if max_dist is not None:
-                data[CONF_MAX_DISTANCE_KM] = max_dist
-
-            return self.async_create_entry(
-                title=f"Zwaailicht {self._stad.title()}", data=data
-            )
-
-        return self.async_show_form(
-            step_id="options",
-            data_schema=STEP_OPTIONS_SCHEMA,
         )

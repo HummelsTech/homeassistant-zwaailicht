@@ -5,13 +5,13 @@ from math import asin, cos, radians, sin, sqrt
 DOMAIN = "zwaailicht"
 DEFAULT_SCAN_INTERVAL = 60  # seconds
 MIN_SCAN_INTERVAL = 30
+DEFAULT_RADIUS_KM = 10.0
 
-MELDINGEN_URL_TEMPLATE = "https://zwaailicht.nu/feed/meldingen/{stad}.xml"
+MELDINGEN_URL = "https://zwaailicht.nu/feed/meldingen.xml"
 PIEKEN_URL = "https://zwaailicht.nu/feed/pieken.xml"
 
-CONF_STAD = "stad"
+CONF_RADIUS_KM = "radius_km"
 CONF_SCAN_INTERVAL = "scan_interval"
-CONF_MAX_DISTANCE_KM = "max_distance_km"
 CONF_PIEKEN = "pieken"
 
 DIENST_ICONS: dict[str, str] = {

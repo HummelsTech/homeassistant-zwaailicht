@@ -36,9 +36,6 @@ _MELDINGEN_TITLE_RE = re.compile(
 # Example: "Brandweer melding. Prioriteit: Urgent. Eenheid: BAD-01. Type: Brand."
 _SUMMARY_FIELD_RE = re.compile(r"(\w[\w\s]*?):\s*([^.]+)")
 
-FEED_TYPE_MELDINGEN = "meldingen"
-FEED_TYPE_PIEKEN = "pieken"
-
 
 class ZwaailichtCoordinator(DataUpdateCoordinator[list[dict[str, Any]]]):
     """Coordinator that polls a zwaailicht.nu Atom feed."""
@@ -49,21 +46,18 @@ class ZwaailichtCoordinator(DataUpdateCoordinator[list[dict[str, Any]]]):
         *,
         feed_url: str,
         feed_type: str,
-        stad: str,
         scan_interval: int,
-        max_distance_km: float | None = None,
+        radius_km: float,
     ) -> None:
         """Initialize the coordinator."""
         self.feed_url = feed_url
         self.feed_type = feed_type
-        self.stad = stad
-        self.max_distance_km = max_distance_km
+        self.radius_km = radius_km
 
-        suffix = "pieken" if feed_type == FEED_TYPE_PIEKEN else stad
         super().__init__(
             hass,
             _LOGGER,
-            name=f"{DOMAIN}_{suffix}",
+            name=f"{DOMAIN}_{feed_type}",
             update_interval=timedelta(seconds=scan_interval),
         )
 
@@ -105,14 +99,16 @@ class ZwaailichtCoordinator(DataUpdateCoordinator[list[dict[str, Any]]]):
         feed = await self.hass.async_add_executor_job(feedparser.parse, body)
 
         entries = self._process_entries(feed.entries)
-        self._fire_new_alert_events(entries)
+        self._fire_new_events(entries)
         self._previous_data = entries
         return entries
 
     def _process_entries(
         self, raw_entries: list
     ) -> list[dict[str, Any]]:
-        """Convert feed entries to normalized dicts."""
+        """Convert feed entries to normalized dicts, filter by radius."""
+        home_lat = self.hass.config.latitude
+        home_lon = self.hass.config.longitude
         results: list[dict[str, Any]] = []
 
         for entry in raw_entries:
@@ -137,7 +133,6 @@ class ZwaailichtCoordinator(DataUpdateCoordinator[list[dict[str, Any]]]):
                     stad = term
             if not dienst:
                 dienst = _detect_dienst(title) or _detect_dienst(summary)
-            stad = stad or self.stad
 
             # Build the core alert dict.
             alert: dict[str, Any] = {
@@ -156,20 +151,19 @@ class ZwaailichtCoordinator(DataUpdateCoordinator[list[dict[str, Any]]]):
             if lat is not None and lon is not None:
                 alert["latitude"] = lat
                 alert["longitude"] = lon
-                if (
-                    self.hass.config.latitude is not None
-                    and self.hass.config.longitude is not None
-                ):
-                    dist = haversine(
-                        self.hass.config.latitude,
-                        self.hass.config.longitude,
-                        lat,
-                        lon,
-                    )
+                if home_lat is not None and home_lon is not None:
+                    dist = haversine(home_lat, home_lon, lat, lon)
                     alert["distance_km"] = round(dist, 1)
 
+            # Radius filtering: drop entries outside radius.
+            # Entries without coordinates are dropped (we can't determine
+            # proximity without geo data).
+            dist = alert.get("distance_km")
+            if dist is None or dist > self.radius_km:
+                continue
+
             # Meldingen-specific: parse priority and structured summary.
-            if self.feed_type == FEED_TYPE_MELDINGEN:
+            if self.feed_type == "meldingen":
                 m = _MELDINGEN_TITLE_RE.match(title)
                 if m:
                     alert["prioriteit_code"] = m.group(1)
@@ -190,24 +184,17 @@ class ZwaailichtCoordinator(DataUpdateCoordinator[list[dict[str, Any]]]):
                 if summary:
                     alert["summary"] = summary
 
-            # Proximity filtering.
-            if self.max_distance_km is not None:
-                dist = alert.get("distance_km")
-                if dist is not None and dist > self.max_distance_km:
-                    continue
-                # Entries without coordinates are always included.
-
             results.append(alert)
 
         return results
 
-    def _fire_new_alert_events(
+    def _fire_new_events(
         self, entries: list[dict[str, Any]]
     ) -> None:
         """Fire HA events for entries not seen in the previous poll."""
         event_type = (
             "zwaailicht_new_piek"
-            if self.feed_type == FEED_TYPE_PIEKEN
+            if self.feed_type == "pieken"
             else "zwaailicht_new_alert"
         )
         for alert in entries:

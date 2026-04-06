@@ -10,17 +10,10 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import (
-    CONF_FEED_TYPE,
-    CONF_STAD,
-    DEFAULT_ICON,
-    DIENST_ICONS,
-    DOMAIN,
-    FEED_TYPE_PIEKEN,
-)
+from .const import DEFAULT_ICON, DIENST_ICONS, DOMAIN
 from .coordinator import ZwaailichtCoordinator
 
-MAX_RECENT_ALERTS = 10
+MAX_RECENT = 10
 
 
 async def async_setup_entry(
@@ -28,36 +21,50 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up Zwaailicht sensor from a config entry."""
-    coordinator: ZwaailichtCoordinator = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities([ZwaailichtSensor(coordinator, entry)])
+    """Set up Zwaailicht sensors from a config entry."""
+    coordinators: dict[str, ZwaailichtCoordinator] = hass.data[DOMAIN][
+        entry.entry_id
+    ]
+    entities: list[ZwaailichtSensor] = []
+
+    entities.append(
+        ZwaailichtSensor(
+            coordinators["meldingen"],
+            unique_id="zwaailicht_meldingen",
+            name="Zwaailicht Meldingen",
+        )
+    )
+
+    if "pieken" in coordinators:
+        entities.append(
+            ZwaailichtSensor(
+                coordinators["pieken"],
+                unique_id="zwaailicht_pieken",
+                name="Zwaailicht Pieken",
+            )
+        )
+
+    async_add_entities(entities)
 
 
 class ZwaailichtSensor(
     CoordinatorEntity[ZwaailichtCoordinator], SensorEntity
 ):
-    """Sensor representing the latest P2000 alert or piek."""
+    """Sensor representing the latest P2000 alert or piek within radius."""
 
     _attr_has_entity_name = True
 
     def __init__(
         self,
         coordinator: ZwaailichtCoordinator,
-        entry: ConfigEntry,
+        *,
+        unique_id: str,
+        name: str,
     ) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator)
-        feed_type = entry.data.get(CONF_FEED_TYPE, "meldingen")
-        stad = entry.data.get(CONF_STAD, "")
-
-        if feed_type == FEED_TYPE_PIEKEN:
-            self._attr_unique_id = "zwaailicht_pieken"
-            self._attr_name = "Zwaailicht Pieken"
-        else:
-            self._attr_unique_id = f"zwaailicht_{stad}"
-            self._attr_name = f"Zwaailicht {stad.title()}"
-
-        self._attr_translation_key = "zwaailicht"
+        self._attr_unique_id = unique_id
+        self._attr_name = name
 
     @property
     def _latest(self) -> dict[str, Any] | None:
@@ -99,7 +106,6 @@ class ZwaailichtSensor(
             "stad": latest.get("stad"),
         }
 
-        # Optional fields — present depending on feed type and entry.
         for key in (
             "prioriteit_code", "prioriteit", "locatie",
             "summary", "eenheid", "type",
@@ -109,6 +115,6 @@ class ZwaailichtSensor(
                 attrs[key] = latest[key]
 
         data = self.coordinator.data or []
-        attrs["recent_alerts"] = data[:MAX_RECENT_ALERTS]
+        attrs["recent_alerts"] = data[:MAX_RECENT]
 
         return attrs
