@@ -5,7 +5,7 @@ from math import asin, cos, radians, sin, sqrt
 DOMAIN = "zwaailicht"
 DEFAULT_SCAN_INTERVAL = 60  # seconds
 MIN_SCAN_INTERVAL = 30
-FEED_URL_TEMPLATE = "https://zwaailicht.nu/feeds/{stad}.xml"
+FEED_URL_TEMPLATE = "https://zwaailicht.nu/feed/meldingen/{stad}.xml"
 DEFAULT_MAX_DISTANCE_KM = None  # None = no filtering
 
 CONF_STAD = "stad"
@@ -19,6 +19,22 @@ DIENST_ICONS: dict[str, str] = {
     "knrm": "mdi:lifebuoy",
 }
 DEFAULT_ICON = "mdi:alert-circle"
+
+# Mappings to detect dienst from title emoji or keywords.
+DIENST_EMOJI_MAP: dict[str, str] = {
+    "\U0001f692": "brandweer",   # 🚒
+    "\U0001f691": "ambulance",   # 🚑
+    "\U0001f693": "politie",     # 🚓
+    "\U0001f6df": "knrm",        # 🛟
+    "\u26f5": "knrm",            # ⛵
+}
+DIENST_KEYWORD_MAP: dict[str, str] = {
+    "brandweer": "brandweer",
+    "ambulance": "ambulance",
+    "politie": "politie",
+    "knrm": "knrm",
+    "reddingsbrigade": "knrm",
+}
 
 EARTH_RADIUS_KM = 6371.0
 

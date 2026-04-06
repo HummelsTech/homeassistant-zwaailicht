@@ -21,6 +21,8 @@ from .const import (
     CONF_STAD,
     DEFAULT_MAX_DISTANCE_KM,
     DEFAULT_SCAN_INTERVAL,
+    DIENST_EMOJI_MAP,
+    DIENST_KEYWORD_MAP,
     DOMAIN,
     FEED_URL_TEMPLATE,
     haversine,
@@ -102,16 +104,22 @@ class ZwaailichtCoordinator(DataUpdateCoordinator[list[dict[str, Any]]]):
                 entry, "link", ""
             )
 
-            # Extract dienst from categories/tags.
+            title = getattr(entry, "title", "")
+            summary = getattr(entry, "summary", "")
+
+            # Extract dienst: try category tags first, then emoji, then keywords.
             dienst = ""
             tags = getattr(entry, "tags", [])
             if tags:
                 dienst = tags[0].get("term", "").lower()
 
+            if not dienst:
+                dienst = _detect_dienst(title) or _detect_dienst(summary)
+
             # Build the alert dict.
             alert: dict[str, Any] = {
                 "id": entry_id,
-                "title": getattr(entry, "title", ""),
+                "title": title,
                 "timestamp": getattr(entry, "updated", "")
                 or getattr(entry, "published", ""),
                 "link": getattr(entry, "link", ""),
@@ -119,19 +127,14 @@ class ZwaailichtCoordinator(DataUpdateCoordinator[list[dict[str, Any]]]):
                 "stad": self.stad,
             }
 
-            # Optional fields: capcode, lat/lon, piek.
-            summary = getattr(entry, "summary", "")
+            # Summary text — expose as attribute when present.
+            if summary:
+                alert["summary"] = summary
+
             content_list = getattr(entry, "content", [])
             content_text = (
                 content_list[0].get("value", "") if content_list else ""
             )
-
-            # Try to extract capcode from title or summary.
-            for text in (entry.get("title", ""), summary, content_text):
-                if not text:
-                    continue
-                # Common pattern: capcode in parentheses or as a field.
-                # We store raw if found in structured fields.
 
             # Geo fields — check georss or geo namespace.
             lat = _get_float(entry, "geo_lat") or _get_float(
@@ -205,6 +208,18 @@ class ZwaailichtCoordinator(DataUpdateCoordinator[list[dict[str, Any]]]):
             # Keep only IDs from current entries.
             current_ids = {e["id"] for e in entries}
             self._seen_ids = current_ids
+
+
+def _detect_dienst(text: str) -> str:
+    """Detect dienst from emoji prefix or keywords in text."""
+    for emoji, dienst in DIENST_EMOJI_MAP.items():
+        if emoji in text:
+            return dienst
+    text_lower = text.lower()
+    for keyword, dienst in DIENST_KEYWORD_MAP.items():
+        if keyword in text_lower:
+            return dienst
+    return ""
 
 
 def _get_float(entry: Any, attr: str) -> float | None:
