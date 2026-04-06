@@ -2,6 +2,14 @@
   "config": {
     "step": {
       "user": {
+        "title": "Zwaailicht P2000",
+        "description": "Choose a feed type to add.",
+        "menu_options": {
+          "meldingen": "Meldingen (per city)",
+          "pieken": "Pieken (national)"
+        }
+      },
+      "meldingen": {
         "title": "Add a city",
         "description": "Enter the city slug as used on zwaailicht.nu (e.g. amsterdam, utrecht).",
         "data": {
@@ -10,9 +18,10 @@
       },
       "options": {
         "title": "Options",
-        "description": "Optionally adjust the polling interval.",
+        "description": "Optionally adjust the polling interval and distance filter. Distance filtering uses your Home Assistant home location.",
         "data": {
-          "scan_interval": "Update interval (seconds)"
+          "scan_interval": "Update interval (seconds)",
+          "max_distance_km": "Maximum distance (km)"
         }
       }
     },
@@ -21,7 +30,8 @@
       "cannot_connect": "Unable to connect to zwaailicht.nu"
     },
     "abort": {
-      "already_configured": "This city is already configured"
+      "already_configured": "This feed is already configured",
+      "cannot_connect": "Unable to connect to zwaailicht.nu"
     }
   }
 }

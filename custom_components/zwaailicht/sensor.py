@@ -10,7 +10,14 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import CONF_STAD, DEFAULT_ICON, DIENST_ICONS, DOMAIN
+from .const import (
+    CONF_FEED_TYPE,
+    CONF_STAD,
+    DEFAULT_ICON,
+    DIENST_ICONS,
+    DOMAIN,
+    FEED_TYPE_PIEKEN,
+)
 from .coordinator import ZwaailichtCoordinator
 
 MAX_RECENT_ALERTS = 10
@@ -29,7 +36,7 @@ async def async_setup_entry(
 class ZwaailichtSensor(
     CoordinatorEntity[ZwaailichtCoordinator], SensorEntity
 ):
-    """Sensor representing the latest P2000 alert for a city."""
+    """Sensor representing the latest P2000 alert or piek."""
 
     _attr_has_entity_name = True
 
@@ -40,14 +47,21 @@ class ZwaailichtSensor(
     ) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator)
-        stad = entry.data[CONF_STAD]
-        self._attr_unique_id = f"zwaailicht_{stad}"
-        self._attr_name = f"Zwaailicht {stad.title()}"
+        feed_type = entry.data.get(CONF_FEED_TYPE, "meldingen")
+        stad = entry.data.get(CONF_STAD, "")
+
+        if feed_type == FEED_TYPE_PIEKEN:
+            self._attr_unique_id = "zwaailicht_pieken"
+            self._attr_name = "Zwaailicht Pieken"
+        else:
+            self._attr_unique_id = f"zwaailicht_{stad}"
+            self._attr_name = f"Zwaailicht {stad.title()}"
+
         self._attr_translation_key = "zwaailicht"
 
     @property
     def _latest(self) -> dict[str, Any] | None:
-        """Return the most recent alert, if any."""
+        """Return the most recent entry, if any."""
         data = self.coordinator.data
         if data:
             return data[0]
@@ -55,7 +69,7 @@ class ZwaailichtSensor(
 
     @property
     def native_value(self) -> str | None:
-        """Return the title of the most recent alert."""
+        """Return the title of the most recent entry."""
         latest = self._latest
         if latest is None:
             return None
@@ -64,7 +78,7 @@ class ZwaailichtSensor(
 
     @property
     def icon(self) -> str:
-        """Return an icon based on the dienst of the latest alert."""
+        """Return an icon based on the dienst of the latest entry."""
         latest = self._latest
         if latest is None:
             return DEFAULT_ICON
@@ -73,7 +87,7 @@ class ZwaailichtSensor(
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        """Return attributes from the latest alert plus recent alerts list."""
+        """Return attributes from the latest entry plus recent entries list."""
         latest = self._latest
         if latest is None:
             return {}
@@ -82,12 +96,14 @@ class ZwaailichtSensor(
             "dienst": latest.get("dienst"),
             "timestamp": latest.get("timestamp"),
             "link": latest.get("link"),
+            "stad": latest.get("stad"),
         }
 
-        # Optional fields parsed from title and summary.
+        # Optional fields — present depending on feed type and entry.
         for key in (
             "prioriteit_code", "prioriteit", "locatie",
             "summary", "eenheid", "type",
+            "latitude", "longitude", "distance_km",
         ):
             if key in latest:
                 attrs[key] = latest[key]

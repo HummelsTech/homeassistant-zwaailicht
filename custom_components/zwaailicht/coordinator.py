@@ -17,25 +17,31 @@ from homeassistant.helpers.update_coordinator import (
 )
 
 from .const import (
+    CONF_FEED_TYPE,
+    CONF_MAX_DISTANCE_KM,
     CONF_SCAN_INTERVAL,
     CONF_STAD,
     DEFAULT_SCAN_INTERVAL,
     DIENST_EMOJI_MAP,
     DIENST_KEYWORD_MAP,
     DOMAIN,
-    FEED_URL_TEMPLATE,
+    FEED_TYPE_MELDINGEN,
+    FEED_TYPE_PIEKEN,
+    MELDINGEN_URL_TEMPLATE,
+    PIEKEN_URL,
+    haversine,
 )
 
 _LOGGER = logging.getLogger(__name__)
 
-# Pattern to extract priority code and label from title.
+# Pattern to extract priority code and label from meldingen titles.
 # Examples: "🚑 A1 Spoed — Brouwersgracht, Amsterdam"
 #           "🔥 P2 Urgent — Saaftingestraat, Amsterdam"
-_TITLE_RE = re.compile(
+_MELDINGEN_TITLE_RE = re.compile(
     r"^.+?\s+([A-Z]\d)\s+(.+?)\s+[—\-]\s+(.+),\s*(.+)$"
 )
 
-# Pattern to extract structured fields from summary.
+# Pattern to extract structured fields from meldingen summary.
 # Example: "Brandweer melding. Prioriteit: Urgent. Eenheid: BAD-01. Type: Brand."
 _SUMMARY_FIELD_RE = re.compile(r"(\w[\w\s]*?):\s*([^.]+)")
 
@@ -45,15 +51,23 @@ class ZwaailichtCoordinator(DataUpdateCoordinator[list[dict[str, Any]]]):
 
     def __init__(self, hass: HomeAssistant, config: dict[str, Any]) -> None:
         """Initialize the coordinator."""
-        self.stad: str = config[CONF_STAD]
-        self.feed_url: str = FEED_URL_TEMPLATE.format(stad=self.stad)
+        self.feed_type: str = config.get(CONF_FEED_TYPE, FEED_TYPE_MELDINGEN)
+        self.stad: str = config.get(CONF_STAD, "")
+        self.max_distance_km: float | None = config.get(CONF_MAX_DISTANCE_KM)
+
+        if self.feed_type == FEED_TYPE_PIEKEN:
+            self.feed_url = PIEKEN_URL
+            name = f"{DOMAIN}_pieken"
+        else:
+            self.feed_url = MELDINGEN_URL_TEMPLATE.format(stad=self.stad)
+            name = f"{DOMAIN}_{self.stad}"
 
         scan_interval = config.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
 
         super().__init__(
             hass,
             _LOGGER,
-            name=f"{DOMAIN}_{self.stad}",
+            name=name,
             update_interval=timedelta(seconds=scan_interval),
         )
 
@@ -77,7 +91,7 @@ class ZwaailichtCoordinator(DataUpdateCoordinator[list[dict[str, Any]]]):
             )
         except Exception as err:
             raise UpdateFailed(
-                f"Error fetching feed for {self.stad}: {err}"
+                f"Error fetching feed {self.feed_url}: {err}"
             ) from err
 
         if resp.status == 304:
@@ -85,7 +99,7 @@ class ZwaailichtCoordinator(DataUpdateCoordinator[list[dict[str, Any]]]):
 
         if resp.status != 200:
             raise UpdateFailed(
-                f"Feed returned HTTP {resp.status} for {self.stad}"
+                f"Feed returned HTTP {resp.status} for {self.feed_url}"
             )
 
         self._etag = resp.headers.get("ETag")
@@ -116,11 +130,22 @@ class ZwaailichtCoordinator(DataUpdateCoordinator[list[dict[str, Any]]]):
             # Extract dienst from category tags (primary), fall back to
             # emoji / keyword detection.
             dienst = ""
+            stad = ""
             tags = getattr(entry, "tags", [])
-            if tags:
-                dienst = tags[0].get("term", "").lower()
+            for tag in tags:
+                term = tag.get("term", "").lower()
+                if term in (
+                    "ambulance", "brandweer", "politie", "knrm", "piek",
+                ):
+                    dienst = term
+                else:
+                    # Second category is typically the city slug.
+                    stad = term
             if not dienst:
                 dienst = _detect_dienst(title) or _detect_dienst(summary)
+
+            # Use city from feed categories, fall back to configured stad.
+            stad = stad or self.stad
 
             # Build the core alert dict.
             alert: dict[str, Any] = {
@@ -130,28 +155,55 @@ class ZwaailichtCoordinator(DataUpdateCoordinator[list[dict[str, Any]]]):
                 or getattr(entry, "published", ""),
                 "link": getattr(entry, "link", ""),
                 "dienst": dienst,
-                "stad": self.stad,
+                "stad": stad,
+                "feed_type": self.feed_type,
             }
 
-            # Parse structured fields from title.
-            # "🚑 A1 Spoed — Brouwersgracht, Amsterdam"
-            m = _TITLE_RE.match(title)
-            if m:
-                alert["prioriteit_code"] = m.group(1)   # e.g. "A1"
-                alert["prioriteit"] = m.group(2)         # e.g. "Spoed"
-                alert["locatie"] = m.group(3).strip()    # e.g. "Brouwersgracht"
+            # Parse georss:point → latitude, longitude, distance_km.
+            lat, lon = _parse_georss_point(entry)
+            if lat is not None and lon is not None:
+                alert["latitude"] = lat
+                alert["longitude"] = lon
+                if (
+                    self.hass.config.latitude is not None
+                    and self.hass.config.longitude is not None
+                ):
+                    dist = haversine(
+                        self.hass.config.latitude,
+                        self.hass.config.longitude,
+                        lat,
+                        lon,
+                    )
+                    alert["distance_km"] = round(dist, 1)
 
-            # Parse structured fields from summary.
-            # "Brandweer melding. Prioriteit: Urgent. Eenheid: BAD-01. Type: Brand."
-            if summary:
-                alert["summary"] = summary
-                for field_match in _SUMMARY_FIELD_RE.finditer(summary):
-                    key = field_match.group(1).strip().lower()
-                    value = field_match.group(2).strip()
-                    if key == "eenheid":
-                        alert["eenheid"] = value
-                    elif key == "type":
-                        alert["type"] = value
+            # Meldingen-specific: parse priority and structured summary.
+            if self.feed_type == FEED_TYPE_MELDINGEN:
+                m = _MELDINGEN_TITLE_RE.match(title)
+                if m:
+                    alert["prioriteit_code"] = m.group(1)
+                    alert["prioriteit"] = m.group(2)
+                    alert["locatie"] = m.group(3).strip()
+
+                if summary:
+                    alert["summary"] = summary
+                    for field_match in _SUMMARY_FIELD_RE.finditer(summary):
+                        key = field_match.group(1).strip().lower()
+                        value = field_match.group(2).strip()
+                        if key == "eenheid":
+                            alert["eenheid"] = value
+                        elif key == "type":
+                            alert["type"] = value
+            else:
+                # Pieken: summary is the full incident description.
+                if summary:
+                    alert["summary"] = summary
+
+            # Proximity filtering.
+            if self.max_distance_km is not None:
+                dist = alert.get("distance_km")
+                if dist is not None and dist > self.max_distance_km:
+                    continue
+                # Entries without coordinates are always included.
 
             results.append(alert)
 
@@ -161,18 +213,34 @@ class ZwaailichtCoordinator(DataUpdateCoordinator[list[dict[str, Any]]]):
         self, entries: list[dict[str, Any]]
     ) -> None:
         """Fire HA events for entries not seen in the previous poll."""
+        event_type = (
+            "zwaailicht_new_piek"
+            if self.feed_type == FEED_TYPE_PIEKEN
+            else "zwaailicht_new_alert"
+        )
         for alert in entries:
             alert_id = alert["id"]
             if alert_id not in self._seen_ids:
                 self._seen_ids.add(alert_id)
-                self.hass.bus.async_fire(
-                    "zwaailicht_new_alert", dict(alert)
-                )
+                self.hass.bus.async_fire(event_type, dict(alert))
 
-        # Trim seen_ids to prevent unbounded growth — keep last 500.
+        # Trim seen_ids to prevent unbounded growth.
         if len(self._seen_ids) > 500:
             current_ids = {e["id"] for e in entries}
             self._seen_ids = current_ids
+
+
+def _parse_georss_point(entry: Any) -> tuple[float | None, float | None]:
+    """Extract lat/lon from a georss:point element."""
+    point = getattr(entry, "georss_point", None)
+    if point:
+        parts = point.split()
+        if len(parts) == 2:
+            try:
+                return float(parts[0]), float(parts[1])
+            except ValueError:
+                pass
+    return None, None
 
 
 def _detect_dienst(text: str) -> str:
