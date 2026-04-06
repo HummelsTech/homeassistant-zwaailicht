@@ -13,6 +13,7 @@ PIEKEN_URL = "https://zwaailicht.nu/feed/pieken.xml"
 CONF_RADIUS_KM = "radius_km"
 CONF_SCAN_INTERVAL = "scan_interval"
 CONF_PIEKEN = "pieken"
+CONF_SIGNIFICANT = "significant_only"
 
 DIENST_ICONS: dict[str, str] = {
     "brandweer": "mdi:fire-truck",

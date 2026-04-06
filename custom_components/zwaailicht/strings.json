@@ -6,6 +6,7 @@
         "description": "Set a radius around your home location to receive P2000 alerts.",
         "data": {
           "radius_km": "Radius (km)",
+          "significant_only": "Significant alerts only",
           "pieken": "Include pieken (notable incidents)",
           "scan_interval": "Update interval (seconds)"
         }

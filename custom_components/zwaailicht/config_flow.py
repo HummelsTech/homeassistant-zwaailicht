@@ -10,6 +10,7 @@ from .const import (
     CONF_PIEKEN,
     CONF_RADIUS_KM,
     CONF_SCAN_INTERVAL,
+    CONF_SIGNIFICANT,
     DEFAULT_RADIUS_KM,
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
@@ -21,6 +22,7 @@ STEP_USER_SCHEMA = vol.Schema(
         vol.Required(CONF_RADIUS_KM, default=DEFAULT_RADIUS_KM): vol.All(
             vol.Coerce(float), vol.Range(min=0.1)
         ),
+        vol.Optional(CONF_SIGNIFICANT, default=True): bool,
         vol.Optional(CONF_PIEKEN, default=True): bool,
         vol.Optional(
             CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL

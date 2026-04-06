@@ -6,6 +6,7 @@
         "description": "Stel een straal in rond je thuislocatie om P2000-meldingen te ontvangen.",
         "data": {
           "radius_km": "Straal (km)",
+          "significant_only": "Alleen belangrijke meldingen",
           "pieken": "Pieken tonen (opvallende incidenten)",
           "scan_interval": "Update-interval (seconden)"
         }

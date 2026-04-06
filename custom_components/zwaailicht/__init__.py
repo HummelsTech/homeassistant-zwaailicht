@@ -9,6 +9,7 @@ from .const import (
     CONF_PIEKEN,
     CONF_RADIUS_KM,
     CONF_SCAN_INTERVAL,
+    CONF_SIGNIFICANT,
     DEFAULT_RADIUS_KM,
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
@@ -25,9 +26,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     scan_interval = entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
     radius_km = entry.data.get(CONF_RADIUS_KM, DEFAULT_RADIUS_KM)
 
+    meldingen_url = MELDINGEN_URL
+    if entry.data.get(CONF_SIGNIFICANT, False):
+        meldingen_url += "?filter=significant"
+
     meldingen = ZwaailichtCoordinator(
         hass,
-        feed_url=MELDINGEN_URL,
+        feed_url=meldingen_url,
         feed_type="meldingen",
         scan_interval=scan_interval,
         radius_km=radius_km,
