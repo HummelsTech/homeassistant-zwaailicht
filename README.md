@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="custom_components/zwaailicht/icon.png" alt="Zwaailicht" width="80" />
+  <img src="custom_components/zwaailicht/brand/icon.png" alt="Zwaailicht" width="80" />
 </p>
 
 # Zwaailicht P2000 — Home Assistant Integration
