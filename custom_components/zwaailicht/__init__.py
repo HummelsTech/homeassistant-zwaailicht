@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+import logging
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+
+_LOGGER = logging.getLogger(__name__)
 
 from .const import (
     CONF_PIEKEN,
@@ -27,7 +31,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     radius_km = entry.data.get(CONF_RADIUS_KM, DEFAULT_RADIUS_KM)
 
     meldingen_url = MELDINGEN_URL
-    if entry.data.get(CONF_SIGNIFICANT, False):
+    if entry.data.get(CONF_SIGNIFICANT, True):
         meldingen_url += "?filter=significant"
 
     meldingen = ZwaailichtCoordinator(
@@ -43,7 +47,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "meldingen": meldingen,
     }
 
-    if entry.data.get(CONF_PIEKEN, False):
+    if entry.data.get(CONF_PIEKEN, True):
         pieken = ZwaailichtCoordinator(
             hass,
             feed_url=PIEKEN_URL,
@@ -51,8 +55,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             scan_interval=scan_interval,
             radius_km=radius_km,
         )
-        await pieken.async_config_entry_first_refresh()
-        coordinators["pieken"] = pieken
+        try:
+            await pieken.async_config_entry_first_refresh()
+            coordinators["pieken"] = pieken
+        except Exception:
+            _LOGGER.warning("Failed to fetch pieken feed — pieken sensor disabled")
+
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinators
 

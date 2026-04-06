@@ -23,10 +23,11 @@ Copy the `custom_components/zwaailicht` folder into your Home Assistant `config/
 1. Go to **Settings → Devices & Services → Add Integration**
 2. Search for "Zwaailicht P2000"
 3. Set a **radius** (km) around your HA home location — only alerts within this radius are shown
-4. Toggle **pieken** on/off — notable multi-unit incidents
-5. Optionally adjust the update interval (default: 60s, minimum: 30s)
+4. Toggle **significant only** — filters out routine/low-priority alerts server-side (default: on)
+5. Toggle **pieken** on/off — notable multi-unit incidents (default: on)
+6. Optionally adjust the update interval (default: 60s, minimum: 30s)
 
-That's it. The integration polls the national feed and filters by distance from your home.
+That's it. The integration polls the national feed and filters by distance from your home. All settings can be changed later via **Settings → Devices & Services → Zwaailicht P2000 → Configure**.
 
 ## Sensors
 
@@ -50,7 +51,7 @@ That's it. The integration polls the national feed and filters by distance from 
 
 ### Pieken (`sensor.zwaailicht_pieken`)
 
-Created when pieken is enabled. Same attribute structure, with `dienst` set to `piek` and longer narrative summaries.
+Created when pieken is enabled. Same attribute structure, with `dienst` set to `piek`, longer narrative summaries, and `recent_pieken` instead of `recent_alerts`. Pieken without coordinates are always included (high-signal, low-volume).
 
 ## Events
 

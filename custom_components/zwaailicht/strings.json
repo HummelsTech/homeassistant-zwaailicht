@@ -18,5 +18,18 @@
     "abort": {
       "already_configured": "Zwaailicht is already configured"
     }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Zwaailicht P2000 Settings",
+        "data": {
+          "radius_km": "Radius (km)",
+          "significant_only": "Significant alerts only",
+          "pieken": "Include pieken (notable incidents)",
+          "scan_interval": "Update interval (seconds)"
+        }
+      }
+    }
   }
 }

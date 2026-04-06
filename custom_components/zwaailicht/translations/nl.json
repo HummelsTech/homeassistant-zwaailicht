@@ -18,5 +18,18 @@
     "abort": {
       "already_configured": "Zwaailicht is al geconfigureerd"
     }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Zwaailicht P2000 Instellingen",
+        "data": {
+          "radius_km": "Straal (km)",
+          "significant_only": "Alleen belangrijke meldingen",
+          "pieken": "Pieken tonen (opvallende incidenten)",
+          "scan_interval": "Update-interval (seconden)"
+        }
+      }
+    }
   }
 }

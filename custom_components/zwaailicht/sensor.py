@@ -41,6 +41,7 @@ async def async_setup_entry(
                 coordinators["pieken"],
                 unique_id="zwaailicht_pieken",
                 name="Zwaailicht Pieken",
+                recent_key="recent_pieken",
             )
         )
 
@@ -60,11 +61,13 @@ class ZwaailichtSensor(
         *,
         unique_id: str,
         name: str,
+        recent_key: str = "recent_alerts",
     ) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator)
         self._attr_unique_id = unique_id
         self._attr_name = name
+        self._recent_key = recent_key
 
     @property
     def _latest(self) -> dict[str, Any] | None:
@@ -115,6 +118,6 @@ class ZwaailichtSensor(
                 attrs[key] = latest[key]
 
         data = self.coordinator.data or []
-        attrs["recent_alerts"] = data[:MAX_RECENT]
+        attrs[self._recent_key] = data[:MAX_RECENT]
 
         return attrs

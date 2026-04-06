@@ -109,6 +109,14 @@ class ZwaailichtCoordinator(DataUpdateCoordinator[list[dict[str, Any]]]):
         """Convert feed entries to normalized dicts, filter by radius."""
         home_lat = self.hass.config.latitude
         home_lon = self.hass.config.longitude
+        has_home = home_lat is not None and home_lon is not None
+
+        if not has_home:
+            _LOGGER.warning(
+                "Home location not set in HA — cannot filter by distance, "
+                "including all entries"
+            )
+
         results: list[dict[str, Any]] = []
 
         for entry in raw_entries:
@@ -143,24 +151,29 @@ class ZwaailichtCoordinator(DataUpdateCoordinator[list[dict[str, Any]]]):
                 "link": getattr(entry, "link", ""),
                 "dienst": dienst,
                 "stad": stad,
-                "feed_type": self.feed_type,
             }
 
             # Parse georss:point → latitude, longitude, distance_km.
             lat, lon = _parse_georss_point(entry)
-            if lat is not None and lon is not None:
+            has_geo = lat is not None and lon is not None
+            if has_geo:
                 alert["latitude"] = lat
                 alert["longitude"] = lon
-                if home_lat is not None and home_lon is not None:
+                if has_home:
                     dist = haversine(home_lat, home_lon, lat, lon)
                     alert["distance_km"] = round(dist, 1)
 
-            # Radius filtering: drop entries outside radius.
-            # Entries without coordinates are dropped (we can't determine
-            # proximity without geo data).
-            dist = alert.get("distance_km")
-            if dist is None or dist > self.radius_km:
-                continue
+            # Radius filtering.
+            if has_home:
+                dist = alert.get("distance_km")
+                if dist is not None and dist > self.radius_km:
+                    # Outside radius — skip.
+                    continue
+                if dist is None and self.feed_type == "meldingen":
+                    # Meldingen without geo are dropped — can't determine
+                    # proximity. Pieken without geo are kept (high-signal,
+                    # low-volume, user opted in).
+                    continue
 
             # Meldingen-specific: parse priority and structured summary.
             if self.feed_type == "meldingen":
