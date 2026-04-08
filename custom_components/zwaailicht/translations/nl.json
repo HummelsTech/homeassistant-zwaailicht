@@ -3,12 +3,18 @@
     "step": {
       "user": {
         "title": "Zwaailicht P2000",
-        "description": "Stel een straal in rond je thuislocatie om P2000-meldingen te ontvangen.",
+        "description": "Live P2000-noodmeldingen van zwaailicht.nu. Deze integratie pollt de landelijke feed en toont meldingen van ambulance, brandweer, politie en KNRM binnen een straal van je thuislocatie.",
         "data": {
           "radius_km": "Straal (km)",
           "significant_only": "Alleen belangrijke meldingen",
           "pieken": "Pieken tonen (opvallende incidenten)",
           "scan_interval": "Update-interval (seconden)"
+        },
+        "data_description": {
+          "radius_km": "Alleen meldingen binnen deze afstand van je thuislocatie worden getoond. Meldingen daarbuiten worden genegeerd.",
+          "significant_only": "Filtert routine- en lage-prioriteitsmeldingen server-side, zodat alleen belangrijke incidenten overblijven. Aanbevolen voor de meeste gebruikers.",
+          "pieken": "Pieken zijn opvallende incidenten met meerdere eenheden (bijv. grote branden, zware ongelukken). Dit zijn belangrijke meldingen die mogelijk geen exacte locatie hebben.",
+          "scan_interval": "Hoe vaak zwaailicht.nu wordt gepolld voor nieuwe meldingen, in seconden. Minimaal 30 seconden."
         }
       }
     },
@@ -23,11 +29,18 @@
     "step": {
       "init": {
         "title": "Zwaailicht P2000 Instellingen",
+        "description": "Pas aan hoe P2000-meldingen worden gefilterd en gepolld.",
         "data": {
           "radius_km": "Straal (km)",
           "significant_only": "Alleen belangrijke meldingen",
           "pieken": "Pieken tonen (opvallende incidenten)",
           "scan_interval": "Update-interval (seconden)"
+        },
+        "data_description": {
+          "radius_km": "Alleen meldingen binnen deze afstand van je thuislocatie worden getoond. Meldingen daarbuiten worden genegeerd.",
+          "significant_only": "Filtert routine- en lage-prioriteitsmeldingen server-side, zodat alleen belangrijke incidenten overblijven. Aanbevolen voor de meeste gebruikers.",
+          "pieken": "Pieken zijn opvallende incidenten met meerdere eenheden (bijv. grote branden, zware ongelukken). Dit zijn belangrijke meldingen die mogelijk geen exacte locatie hebben.",
+          "scan_interval": "Hoe vaak zwaailicht.nu wordt gepolld voor nieuwe meldingen, in seconden. Minimaal 30 seconden."
         }
       }
     }

@@ -7,6 +7,8 @@ from typing import Any
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.device_registry import DeviceEntryType
+from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -30,8 +32,9 @@ async def async_setup_entry(
     entities.append(
         ZwaailichtSensor(
             coordinators["meldingen"],
+            entry=entry,
             unique_id="zwaailicht_meldingen",
-            name="Zwaailicht Meldingen",
+            name="Meldingen",
         )
     )
 
@@ -39,8 +42,9 @@ async def async_setup_entry(
         entities.append(
             ZwaailichtSensor(
                 coordinators["pieken"],
+                entry=entry,
                 unique_id="zwaailicht_pieken",
-                name="Zwaailicht Pieken",
+                name="Pieken",
                 recent_key="recent_pieken",
             )
         )
@@ -59,6 +63,7 @@ class ZwaailichtSensor(
         self,
         coordinator: ZwaailichtCoordinator,
         *,
+        entry: ConfigEntry,
         unique_id: str,
         name: str,
         recent_key: str = "recent_alerts",
@@ -68,6 +73,12 @@ class ZwaailichtSensor(
         self._attr_unique_id = unique_id
         self._attr_name = name
         self._recent_key = recent_key
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, entry.entry_id)},
+            name="Zwaailicht P2000",
+            manufacturer="zwaailicht.nu",
+            entry_type=DeviceEntryType.SERVICE,
+        )
 
     @property
     def _latest(self) -> dict[str, Any] | None:
