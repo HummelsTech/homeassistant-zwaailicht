@@ -89,11 +89,11 @@ class ZwaailichtSensor(
         return None
 
     @property
-    def native_value(self) -> str | None:
+    def native_value(self) -> str:
         """Return the title of the most recent entry."""
         latest = self._latest
         if latest is None:
-            return None
+            return "Geen meldingen"
         title = latest.get("title", "")
         return title[:255] if len(title) > 255 else title
 
