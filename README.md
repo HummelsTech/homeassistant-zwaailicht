@@ -33,9 +33,11 @@ That's it. The integration polls the national feed and filters by distance from 
 
 ## Sensors
 
+Both sensors are grouped under a single **Zwaailicht P2000** device in Home Assistant.
+
 ### Meldingen (`sensor.zwaailicht_meldingen`)
 
-- **State**: title of the most recent nearby alert (e.g. "🚑 A1 Spoed — Brouwersgracht, Amsterdam")
+- **State**: title of the most recent nearby alert (e.g. "🚑 A1 Spoed — Brouwersgracht, Amsterdam"), or "Geen meldingen" when no alerts are within radius
 - **Attributes**:
   - `dienst` — ambulance, brandweer, politie, knrm
   - `timestamp` — alert timestamp (ISO 8601)
@@ -53,7 +55,7 @@ That's it. The integration polls the national feed and filters by distance from 
 
 ### Pieken (`sensor.zwaailicht_pieken`)
 
-Created when pieken is enabled. Same attribute structure, with `dienst` set to `piek`, longer narrative summaries, and `recent_pieken` instead of `recent_alerts`. Pieken without coordinates are always included (high-signal, low-volume).
+Created when pieken is enabled. Same attribute structure, with `dienst` set to `piek`, longer narrative summaries, and `recent_pieken` instead of `recent_alerts`. Pieken without coordinates are always included (high-signal, low-volume). Shows "Geen meldingen" when no pieken are available.
 
 ## Events & Triggers
 
