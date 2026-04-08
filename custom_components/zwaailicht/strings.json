@@ -3,12 +3,18 @@
     "step": {
       "user": {
         "title": "Zwaailicht P2000",
-        "description": "Set a radius around your home location to receive P2000 alerts.",
+        "description": "Live P2000 emergency alerts from zwaailicht.nu. This integration polls the national feed and shows alerts from ambulance, brandweer, politie, and KNRM within a radius of your home location.",
         "data": {
           "radius_km": "Radius (km)",
           "significant_only": "Significant alerts only",
           "pieken": "Include pieken (notable incidents)",
           "scan_interval": "Update interval (seconds)"
+        },
+        "data_description": {
+          "radius_km": "Only alerts within this distance from your home location are shown. Alerts outside this radius are ignored.",
+          "significant_only": "Filter out routine and low-priority alerts server-side, keeping only significant incidents. Recommended for most users.",
+          "pieken": "Pieken are notable multi-unit incidents (e.g. large fires, major accidents). These are high-signal, low-volume alerts that may not have exact coordinates.",
+          "scan_interval": "How often to poll zwaailicht.nu for new alerts, in seconds. Minimum 30 seconds."
         }
       }
     },
@@ -23,11 +29,18 @@
     "step": {
       "init": {
         "title": "Zwaailicht P2000 Settings",
+        "description": "Adjust how P2000 alerts are filtered and polled.",
         "data": {
           "radius_km": "Radius (km)",
           "significant_only": "Significant alerts only",
           "pieken": "Include pieken (notable incidents)",
           "scan_interval": "Update interval (seconds)"
+        },
+        "data_description": {
+          "radius_km": "Only alerts within this distance from your home location are shown. Alerts outside this radius are ignored.",
+          "significant_only": "Filter out routine and low-priority alerts server-side, keeping only significant incidents. Recommended for most users.",
+          "pieken": "Pieken are notable multi-unit incidents (e.g. large fires, major accidents). These are high-signal, low-volume alerts that may not have exact coordinates.",
+          "scan_interval": "How often to poll zwaailicht.nu for new alerts, in seconds. Minimum 30 seconds."
         }
       }
     }
