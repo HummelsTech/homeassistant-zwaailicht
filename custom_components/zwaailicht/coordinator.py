@@ -223,7 +223,20 @@ class ZwaailichtCoordinator(DataUpdateCoordinator[list[dict[str, Any]]]):
 
 
 def _parse_georss_point(entry: Any) -> tuple[float | None, float | None]:
-    """Extract lat/lon from a georss:point element."""
+    """Extract lat/lon from a georss:point element.
+
+    feedparser exposes <georss:point> as entry.where with GeoJSON-ordered
+    coordinates (lon, lat), not as entry.georss_point.
+    """
+    where = getattr(entry, "where", None)
+    if isinstance(where, dict):
+        coords = where.get("coordinates")
+        if coords and len(coords) == 2:
+            try:
+                lon, lat = float(coords[0]), float(coords[1])
+                return lat, lon
+            except (TypeError, ValueError):
+                pass
     point = getattr(entry, "georss_point", None)
     if point:
         parts = point.split()
