@@ -26,40 +26,40 @@ Copy the `custom_components/zwaailicht` folder into your Home Assistant `config/
 2. Search for "Zwaailicht P2000"
 3. Set a **radius** (km) around your HA home location — only alerts within this radius are shown
 4. Toggle **significant only** — filters out routine/low-priority alerts server-side (default: on)
-5. Toggle **pieken** on/off — notable multi-unit incidents (default: on)
+5. Toggle **pieken** on/off — notable multi-unit incidents nationwide (default: on)
 6. Optionally adjust the update interval (default: 60s, minimum: 30s)
 
 That's it. The integration polls the national feed and filters by distance from your home. All settings can be changed later via **Settings → Devices & Services → Zwaailicht P2000 → Configure**.
 
 ## Sensors
 
-Both sensors are grouped under a single **Zwaailicht P2000** device in Home Assistant.
+All sensors are grouped under a single **Zwaailicht P2000** device. Each can be individually enabled or disabled.
 
-### Meldingen (`sensor.zwaailicht_meldingen`)
+### Laatste melding (`sensor.zwaailicht_laatste_melding`)
 
-- **State**: title of the most recent nearby alert (e.g. "🚑 A1 Spoed — Brouwersgracht, Amsterdam"), or "Geen meldingen" when no alerts are within radius
-- **Attributes**:
-  - `dienst` — ambulance, brandweer, politie, knrm
-  - `timestamp` — alert timestamp (ISO 8601)
-  - `link` — URL to the alert on zwaailicht.nu
-  - `stad` — city
-  - `prioriteit_code` — priority code (A1, A2, B1, B2, P1, P2, etc.)
-  - `prioriteit` — priority label (Spoed, Urgent, Gepland vervoer, etc.)
-  - `locatie` — street/location name
-  - `summary` — full summary text
-  - `eenheid` — responding unit (e.g. BAD-01)
-  - `type` — incident type (Medisch, Brand, etc.)
-  - `latitude` / `longitude` — incident coordinates
-  - `distance_km` — distance from your home location
-  - `recent_alerts` — list of the last 10 nearby alerts
+The most recent P2000 alert within your configured radius.
 
-### Pieken (`sensor.zwaailicht_pieken`)
+- **State**: alert title (e.g. "🚑 A1 Spoed — Brouwersgracht, Amsterdam"), or "Geen meldingen"
+- **Icon**: dynamic per dienst (fire truck, ambulance, police badge, lifebuoy)
+- **Attributes**: `dienst`, `stad`, `timestamp`, `link`, `prioriteit_code`, `prioriteit`, `locatie`, `distance_km`
 
-Created when pieken is enabled. Same attribute structure, with `dienst` set to `piek`, longer narrative summaries, and `recent_pieken` instead of `recent_alerts`. Pieken without coordinates are always included (high-signal, low-volume). Shows "Geen meldingen" when no pieken are available.
+### Aantal meldingen (`sensor.zwaailicht_aantal_meldingen`)
+
+Number of recent alerts within your radius (from the last feed poll).
+
+- **State**: integer (e.g. `3`)
+- **State class**: measurement (enables history graphs)
+
+### Laatste piek (`sensor.zwaailicht_laatste_piek`)
+
+The most recent notable multi-unit incident nationwide. Created when pieken is enabled. Pieken are not filtered by radius — they are curated national incidents that may span multiple locations.
+
+- **State**: piek title (e.g. "Woningbrand Gezellelaan Roosendaal"), or "Geen pieken"
+- **Attributes**: `stad`, `timestamp`, `link`, `summary`, `distance_km` (when coordinates available)
 
 ## Events & Triggers
 
-The integration fires Home Assistant events for each genuinely new entry within your configured radius. These only fire once per alert (not on every poll), making them ideal for automations.
+The integration fires Home Assistant events for each genuinely new entry. These only fire once per alert (not on every poll), making them ideal for automations.
 
 ### `zwaailicht_new_alert`
 
@@ -87,11 +87,12 @@ Fires when a new P2000 melding appears within your radius.
 
 ### `zwaailicht_new_piek`
 
-Fires when a new piek (notable multi-unit incident) appears. Same fields as above, except:
+Fires when a new piek (notable multi-unit incident) appears nationwide. Not filtered by radius.
+
 - `dienst` is always `piek`
-- `summary` contains a longer narrative description
+- `summary` contains a longer narrative description of the incident
 - `prioriteit_code`, `prioriteit`, `locatie`, `eenheid`, `type` are not present
-- `latitude`, `longitude`, `distance_km` may be absent (pieken without coordinates are included)
+- `latitude`, `longitude`, `distance_km` may be absent (pieken may not have exact coordinates)
 
 ## Automation Examples
 
@@ -131,7 +132,7 @@ automation:
           message: "{{ trigger.event.data.locatie }}, {{ trigger.event.data.stad }} ({{ trigger.event.data.distance_km }}km)"
 ```
 
-### Notify on nearby pieken
+### Notify on pieken
 
 ```yaml
 automation:
@@ -176,18 +177,16 @@ automation:
 
 ### Sensor state change trigger
 
-You can also trigger on the sensor state itself (changes when a new alert arrives within radius):
-
 ```yaml
 automation:
   - alias: "New Nearby Alert"
     trigger:
       - platform: state
-        entity_id: sensor.zwaailicht_meldingen
+        entity_id: sensor.zwaailicht_laatste_melding
     action:
       - service: notify.mobile_app_phone
         data:
-          message: "{{ states('sensor.zwaailicht_meldingen') }}"
+          message: "{{ states('sensor.zwaailicht_laatste_melding') }}"
 ```
 
 ## Links
