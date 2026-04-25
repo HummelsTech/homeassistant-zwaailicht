@@ -163,16 +163,14 @@ class ZwaailichtCoordinator(DataUpdateCoordinator[list[dict[str, Any]]]):
                     dist = haversine(home_lat, home_lon, lat, lon)
                     alert["distance_km"] = round(dist, 1)
 
-            # Radius filtering.
-            if has_home:
+            # Radius filtering — meldingen only. Pieken are national
+            # curated incidents and always included regardless of distance.
+            if self.feed_type == "meldingen" and has_home:
                 dist = alert.get("distance_km")
                 if dist is not None and dist > self.radius_km:
-                    # Outside radius — skip.
                     continue
-                if dist is None and self.feed_type == "meldingen":
-                    # Meldingen without geo are dropped — can't determine
-                    # proximity. Pieken without geo are kept (high-signal,
-                    # low-volume, user opted in).
+                if dist is None:
+                    # Can't determine proximity without geo data.
                     continue
 
             # Meldingen-specific: parse priority and structured summary.
