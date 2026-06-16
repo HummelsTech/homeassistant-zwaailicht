@@ -104,7 +104,7 @@ class ZwaailichtCoordinator(DataUpdateCoordinator[list[dict[str, Any]]]):
         return entries
 
     def _process_entries(
-        self, raw_entries: list
+        self, raw_entries: list[Any]
     ) -> list[dict[str, Any]]:
         """Convert feed entries to normalized dicts, filter by radius."""
         home_lat = self.hass.config.latitude
