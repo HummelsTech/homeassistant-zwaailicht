@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import voluptuous as vol
 
 from homeassistant.config_entries import (
@@ -43,7 +45,7 @@ class ZwaailichtConfigFlow(ConfigFlow, domain=DOMAIN):
     VERSION = 1
 
     async def async_step_user(
-        self, user_input: dict[str, any] | None = None
+        self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Single step: radius, pieken toggle, scan interval."""
         await self.async_set_unique_id(DOMAIN)
@@ -75,7 +77,7 @@ class ZwaailichtOptionsFlow(OptionsFlow):
         self._config_entry = config_entry
 
     async def async_step_init(
-        self, user_input: dict[str, any] | None = None
+        self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Manage options."""
         if user_input is not None:

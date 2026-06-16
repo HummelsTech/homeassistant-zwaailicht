@@ -38,11 +38,11 @@ async def async_setup_entry(
     entities: list[SensorEntity] = []
 
     meldingen = coordinators["meldingen"]
-    entities.append(LaatsteAlertSensor(meldingen, device))
-    entities.append(AlertCountSensor(meldingen, device))
+    entities.append(LaatsteAlertSensor(meldingen, device, entry.entry_id))
+    entities.append(AlertCountSensor(meldingen, device, entry.entry_id))
 
     if "pieken" in coordinators:
-        entities.append(LaatstePiekSensor(coordinators["pieken"], device))
+        entities.append(LaatstePiekSensor(coordinators["pieken"], device, entry.entry_id))
 
     async_add_entities(entities)
 
@@ -54,13 +54,13 @@ class LaatsteAlertSensor(
 
     _attr_has_entity_name = True
     _attr_name = "Laatste melding"
-    _attr_unique_id = "zwaailicht_laatste_melding"
 
     def __init__(
-        self, coordinator: ZwaailichtCoordinator, device: DeviceInfo
+        self, coordinator: ZwaailichtCoordinator, device: DeviceInfo, entry_id: str
     ) -> None:
         super().__init__(coordinator)
         self._attr_device_info = device
+        self._attr_unique_id = f"{entry_id}_laatste_melding"
 
     @property
     def _latest(self) -> dict[str, Any] | None:
@@ -105,15 +105,15 @@ class AlertCountSensor(
 
     _attr_has_entity_name = True
     _attr_name = "Aantal meldingen"
-    _attr_unique_id = "zwaailicht_aantal_meldingen"
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_icon = "mdi:counter"
 
     def __init__(
-        self, coordinator: ZwaailichtCoordinator, device: DeviceInfo
+        self, coordinator: ZwaailichtCoordinator, device: DeviceInfo, entry_id: str
     ) -> None:
         super().__init__(coordinator)
         self._attr_device_info = device
+        self._attr_unique_id = f"{entry_id}_aantal_meldingen"
 
     @property
     def native_value(self) -> int:
@@ -128,14 +128,14 @@ class LaatstePiekSensor(
 
     _attr_has_entity_name = True
     _attr_name = "Laatste piek"
-    _attr_unique_id = "zwaailicht_laatste_piek"
     _attr_icon = "mdi:alert-octagon"
 
     def __init__(
-        self, coordinator: ZwaailichtCoordinator, device: DeviceInfo
+        self, coordinator: ZwaailichtCoordinator, device: DeviceInfo, entry_id: str
     ) -> None:
         super().__init__(coordinator)
         self._attr_device_info = device
+        self._attr_unique_id = f"{entry_id}_laatste_piek"
 
     @property
     def _latest(self) -> dict[str, Any] | None:

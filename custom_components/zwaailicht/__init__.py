@@ -59,7 +59,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             await pieken.async_config_entry_first_refresh()
             coordinators["pieken"] = pieken
         except Exception:
-            _LOGGER.warning("Failed to fetch pieken feed — pieken sensor disabled")
+            _LOGGER.warning("Failed to fetch pieken feed — pieken sensor disabled", exc_info=True)
 
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinators
