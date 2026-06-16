@@ -1,11 +1,12 @@
 {
   "domain": "zwaailicht",
   "name": "Zwaailicht P2000",
-  "version": "0.7.1",
+  "version": "0.7.2",
   "codeowners": ["@graus"],
   "config_flow": true,
   "documentation": "https://github.com/graus/homeassistant-zwaailicht",
+  "homeassistant": "2024.1.0",
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/graus/homeassistant-zwaailicht/issues",
-  "requirements": ["feedparser>=6.0.0"]
+  "requirements": ["feedparser>=6.0.0,<7.0.0"]
 }
