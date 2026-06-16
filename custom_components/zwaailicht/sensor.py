@@ -73,7 +73,7 @@ class LaatsteAlertSensor(
         if latest is None:
             return "Geen meldingen"
         title = latest.get("title", "")
-        return title[:255] if len(title) > 255 else title
+        return title[:255]
 
     @property
     def icon(self) -> str:
@@ -148,7 +148,7 @@ class LaatstePiekSensor(
         if latest is None:
             return "Geen pieken"
         title = latest.get("title", "")
-        return title[:255] if len(title) > 255 else title
+        return title[:255]
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
